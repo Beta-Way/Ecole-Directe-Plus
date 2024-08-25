@@ -1,5 +1,4 @@
-
-import { useRef, useEffect, useContext } from "react";
+import { useRef, useEffect, useContext, useState } from "react";
 import { AppContext } from "../../../App";
 
 import HolographicDiv from "../../generic/CustomDivs/HolographicDiv";
@@ -9,10 +8,13 @@ import { getProxiedURL } from "../../../utils/requests";
 import "./Account.css";
 
 export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, isLoggedIn, activeAccount }) {
-    const { accountsListState, useUserData } = useContext(AppContext)
+    const { accountsListState, useUserData } = useContext(AppContext);
     const userData = useUserData();
 
     const profilePictureRefs = useRef([]);
+
+    // État pour la gestion de la visibilité de la popup
+    const [isPopupVisible, setPopupVisible] = useState(false);
 
     useEffect(() => {
         document.title = "Compte • Ecole Directe Plus";
@@ -25,7 +27,7 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
             const imageLoaded = () => {
                 profilePictureRef?.classList.add("loaded");
                 profilePictureRef?.removeEventListener("load", imageLoaded);
-            }
+            };
             profilePictureRef?.addEventListener("load", imageLoaded);
         }
     }, [profilePictureRefs.current]);
@@ -34,7 +36,7 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
         const controller = new AbortController();
         if (isLoggedIn) {
             if (schoolLife.length < 1 || schoolLife[activeAccount] === undefined) {
-                console.log("fetchSchoolLife")
+                console.log("fetchSchoolLife");
                 fetchSchoolLife(controller);
             } else {
                 console.log("schoolLife:", schoolLife);
@@ -43,9 +45,8 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
         }
 
         return () => {
-            // console.log("controller.abort")
             controller.abort();
-        }
+        };
     }, [schoolLife, isLoggedIn, activeAccount]);
 
     // Initialiser les variables pour stocker la meilleure matière et sa moyenne
@@ -63,6 +64,12 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
         }
     }
 
+    // Fonction pour afficher la popup
+    const showPopup = () => setPopupVisible(true);
+
+    // Fonction pour cacher la popup
+    const hidePopup = () => setPopupVisible(false);
+
     return (
         <div id="account">
             <HolographicDiv borderRadius={10} intensity={.2} className="frame" id="profile">
@@ -79,13 +86,13 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
                     <address id="informations-container">
                         <span>Dernière connexion : <time
                             dateTime={(new Date(accountsListState[activeAccount].lastConnection ?? Date.now())).toISOString()}>
-                        {new Date(accountsListState[activeAccount].lastConnection ?? Date.now()).toLocaleDateString("fr-FR", {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: "numeric",
-                            minute: "numeric"
-                        }).replace(",", " à")}
+                            {new Date(accountsListState[activeAccount].lastConnection ?? Date.now()).toLocaleDateString("fr-FR", {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: "numeric",
+                                minute: "numeric"
+                            }).replace(",", " à")}
                         </time></span>
                         <span>Email : {accountsListState[activeAccount].email}</span>
                         {accountsListState[activeAccount].phoneNumber &&
@@ -93,27 +100,39 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
                     </address>
                 </div>
                 <br/><br/><br/>
-                <section className="frame" id="behavior">
-                    <h2 className="frame-heading">Statistiques</h2>
-                    <div className="behavior-types">
-                        <div className="behavior-type">
-                            <span>Temps total passé en cours (en heures)</span>
-                            <br/>
-                            <span>En cours de développement (bientôt disponible)</span>
-                        </div>
-                        <div className="behavior-type">
-                            <span>Moyenne générale annuelle</span>
-                            <br/>
-                            <span>{userData.get("sortedGrades")?.allYear.generalAverage}</span>
-                        </div>
-                        <div className="behavior-type">
-                            <span>Meilleure matière</span>
-                            <br/>
-                            <span>{bestSubject} (avec {bestAverage})</span>
+
+
+
+                {/* Fenêtre modale des statistiques */}
+                {isPopupVisible && (
+                    <div className="modal-overlay">
+                        <div className="modal-content">
+                            <button className="close-button" onClick={hidePopup}>&times;</button>
+                            <h2 className="frame-heading">Statistiques</h2>
+                            <div className="behavior-types">
+                                <div className="behavior-type">
+                                    <span>Temps total passé en cours (en heures)</span>
+                                    <br />
+                                    <span>(bientôt disponible)</span>
+                                </div>
+                                <div className="behavior-type">
+                                    <span>Moyenne générale annuelle</span>
+                                    <span>{userData.get("sortedGrades")?.allYear.generalAverage}</span>
+                                </div>
+                                <div className="behavior-type">
+                                    <span>Meilleure matière</span>
+                                    <span>{bestSubject} (avec {bestAverage})</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </section>
+                )}
+                <Button onClick={showPopup} className="statistics-button">
+                    Statistiques
+                </Button>
             </HolographicDiv>
+
+
             <section className="frame" id="documents">
                 <h2 className="frame-heading">Documents</h2>
                 <div className="coming-soon">
@@ -127,22 +146,22 @@ export default function Account({ schoolLife, fetchSchoolLife, sortSchoolLife, i
                         <span>Retards</span>
                         <span
                             className={"count" + (!userData.get("sortedSchoolLife")?.delays.length ? " loading" : " loading")}>{userData.get("sortedSchoolLife")?.delays.length ?? <>
-                            <span style={{"--index": 0}}>.</span><span style={{"--index": 1}}>.</span><span
-                            style={{"--index": 2}}>.</span></>}</span>
+                                <span style={{ "--index": 0 }}>.</span><span style={{ "--index": 1 }}>.</span><span
+                                    style={{ "--index": 2 }}>.</span></>}</span>
                     </div>
                     <div className="behavior-type">
                         <span>Absences</span>
                         <span
                             className={"count" + (!userData.get("sortedSchoolLife")?.absences.length ? " loading" : " loading")}>{userData.get("sortedSchoolLife")?.absences.length ?? <>
-                            <span style={{"--index": 3}}>.</span><span style={{"--index": 4}}>.</span><span
-                            style={{"--index": 5}}>.</span></>}</span>
+                                <span style={{ "--index": 3 }}>.</span><span style={{ "--index": 4 }}>.</span><span
+                                    style={{ "--index": 5 }}>.</span></>}</span>
                     </div>
                     <div className="behavior-type">
                         <span>Sanctions</span>
-                        <span className={"count" + (!userData.get("sortedSchoolLife")?.sanctions.length ? " loading" : " loading") }>{userData.get("sortedSchoolLife")?.sanctions.length ?? <><span style={{"--index": 6}}>.</span><span style={{"--index": 7}}>.</span><span style={{"--index": 8}}>.</span></>}</span>
+                        <span className={"count" + (!userData.get("sortedSchoolLife")?.sanctions.length ? " loading" : " loading")}>{userData.get("sortedSchoolLife")?.sanctions.length ?? <><span style={{ "--index": 6 }}>.</span><span style={{ "--index": 7 }}>.</span><span style={{ "--index": 8 }}>.</span></>}</span>
                     </div>
                 </div>
             </section>
         </div>
-    )
+    );
 }
